@@ -1,0 +1,6 @@
+requests==2.11.1
+pysocks
+pandas==0.19.1
+click
+pymongo
+git+https://github.com/cheatm/datautils.git
