@@ -1,0 +1,13 @@
+{
+    "MONGODB": "localhost:27017",
+    "LOG": "log.bitfinex",
+    "BAR": "VnTrader_1Min_Db",
+    "START": 20180701,
+    "END": 20180720,
+    "RETRY": -1,
+    "TARGETS": ["tBTCUSD", "tETHUSD", "tEOSUSD", "tBCHUSD", "tNEOUSD", "tETCUSD", "tIOTUSD", "tLTCUSD", "tXRPUSD", "tXMRUSD"],
+    "PROXIES": {
+        "http": "socks5://192.168.0.105:1080",
+        "https": "socks5://192.168.0.105:1080"
+    }
+}
