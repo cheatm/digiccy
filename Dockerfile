@@ -6,4 +6,4 @@ RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r re
 
 COPY . ./
 
-CMD ["/usr/sbin/cron", "-f"]
+CMD ["/bin/bash", "command.sh"]

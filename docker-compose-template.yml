@@ -1,0 +1,13 @@
+version: "3"
+services:
+  digiccy:
+    container_name: digiccy
+    build: .
+    image: digiccy
+    volumes:
+      - "./binance:/app/binance"
+      - "./bitfinex:/app/bitfinex"
+    environment:
+      BINANCE: "/app/binance"
+      BITFINEX: "/app/bitfinex"
+    command: 
