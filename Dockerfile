@@ -6,4 +6,9 @@ RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r re
 
 COPY . ./
 
+VOLUME [ "/logs" ]
+
+ENV BITFINEX /app/bitfinex
+ENV BINANCE /app/binance
+
 CMD ["/bin/bash", "command.sh"]

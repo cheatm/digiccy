@@ -1,0 +1,2 @@
+0 0,6 * * * /bin/bash /app/binance/run.sh >>  >> "/logs/binance.`date +\%Y-\%m-\%d`" 2>&1
+0 3,9 * * * /bin/bash /app/bitfinex/run.sh >>  >> "/logs/bitfinex.`date +\%Y-\%m-\%d`" 2>&1

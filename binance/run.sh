@@ -1,7 +1,10 @@
 #! /bin/bash
 source /etc/profile
 
-cd $BINANCE
+if [ $BINANCE ]
+then
+    cd $BINANCE
+fi
 
 python binance.py create -f conf.json
 python binance.py download -f conf.json
