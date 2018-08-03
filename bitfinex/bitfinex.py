@@ -244,7 +244,7 @@ def handle_doc(contract, start, end, **kwargs):
     if count:
         frame = vnpy_format(frame, contract, exchange, vtSymbol)
         col = db[vtSymbol]
-        inserted = insert(col, frame)
+        inserted = _insert(col, frame)
     else:
         inserted = -1
         count = -1
@@ -253,10 +253,27 @@ def handle_doc(contract, start, end, **kwargs):
     to_set = {"count": count, "inserted": inserted}
     log.update_one(
         flt, 
-        {"$set": to_set}
+        {"$set": {"count": count},
+         "$inc": {"inserted": inserted}}
     )
     logging.warning("update log | %s | %s", flt, to_set)
     return flt
+
+
+def _insert(collection, frame):
+    assert isinstance(collection, Collection)
+    assert isinstance(frame, pd.DataFrame)
+    if frame.index.name is not None:
+        frame = frame.reset_index()
+    count = 0
+    for doc in frame.to_dict("record"):
+        try:
+            collection.insert_one(doc)
+        except DuplicateKeyError:
+            pass
+        else:
+            count += 1
+    return count
 
 
 def drop_duplicates(name):
