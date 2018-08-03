@@ -146,20 +146,6 @@ def date2mts(t):
     return int(datetime.strptime(str(t), "%Y%m%d").timestamp()*1000)
 
 
-def test():
-    START = int(datetime(2017, 12, 3).timestamp()*1000)
-    END = int(datetime(2017, 12, 4).timestamp()*1000-1)
-
-    frame = get_hist_1min("tETHUSD", start=START, end=END, sort=1)
-    frame.index = frame["timestamp"].apply(mts2datetime)
-    diff = frame["timestamp"].diff()
-    print(diff[diff > 60000])
-    print(frame.shape)
-    # print(frame.shape)
-    # print(frame.head())
-    print(frame.tail())
-
-
 def latest_record(collection):
     assert isinstance(collection, Collection)
     doc = collection.find_one(sort=[("end", -1)])
