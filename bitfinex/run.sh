@@ -7,7 +7,7 @@ then
 fi
 
 
-if [ $CREATE == YES ]
+if [ $CREATE ]
 then
     echo "------------------------- Download start at `date` -------------------------"
     python bitfinex.py create -f conf.json
@@ -20,13 +20,15 @@ point=(03:00 09:00)
 
 while true
 do
-    now = `date +%H:%M`
+    now=`date +%H:%M`
     for t in ${point[*]} 
     do
         if [ $now == $t ]
         then
+            echo "------------------------- Download start at `date` -------------------------"
             python bitfinex.py create -f conf.json
             python bitfinex.py download -f conf.json
+            echo "------------------------- Download start at `date` -------------------------"
         fi
     done
 
