@@ -1,0 +1,20 @@
+version: "3"
+services:
+  binance:
+    container_name: binance
+    build: .
+    image: digiccy
+    volumes:
+      - "./binance/conf.json:/app/binance/conf.json"
+    environment:
+      BINANCE: "/app/binance"
+    command: bash binance/run.sh
+  bitfinex:
+    container_name: bitfinex
+    build: .
+    image: digiccy
+    volumes:
+      - "./bitfinex/conf.json:/app/bitfinex/conf.json"
+    environment:
+      BITFINEX: "/app/bitfinex"
+    command: bash bitfinex/run.sh

@@ -32,7 +32,7 @@ PROXIES = None
 req_args = {}
 # ---------------------------- 入库相关配置 ----------------------------
 
-LOG = "logs.bitfinex"
+LOG = "log.bitfinex"
 BAR = "VnTrader_1Min_Db"
 MONGODB = "localhost"
 
@@ -160,8 +160,9 @@ def create_index(collection, contracts, start, end):
     assert isinstance(collection, Collection)
     collection.create_index([("contract", 1), ("start", 1), ("end", 1)])
     index = create_index_frame(contracts, start, end)
-    r = append(collection, index)
-    print(r)
+    if len(index.index):
+        r = append(collection, index)
+        
 
 # 创建获取数据索(DataFrame)
 def create_index_frame(contracts, start, end):
@@ -172,6 +173,8 @@ def create_index_frame(contracts, start, end):
     index["count"] = 0
     return index.set_index(["contract", "start", "end"])
 
+
+BAR_COLUMN = ["vtSymbol", "symbol", "exchange", "open", "high", "low", "close", "date", "time", "datetime", "volume", "openInterest"]
 
 # 将原始DataFrame修改成符合vnpy格式
 def vnpy_format(frame, contract, exchange, vtSymbol=None):
@@ -185,7 +188,7 @@ def vnpy_format(frame, contract, exchange, vtSymbol=None):
     frame["gatewayName"] = ""
     frame["rawData"] = None
     frame["openInterest"] = 0
-    return frame
+    return frame[BAR_COLUMN]
 
 
 def main():
@@ -296,12 +299,17 @@ def is_bitfinex(s):
     return "bitfinex" in s
 
 
-def create_collection_index():
-    for name in filter(is_bitfinex, db.collection_names()):
-        print(name)
-        db[name].create_index("datetime", background=True)
-        db[name].create_index("date", background=True)
-        print("finish")
+def create_collection_index(*names):
+    if not names:
+        names = db.collection_names()
+    for name in filter(is_bitfinex, names):
+        try:
+            db[name].create_index("datetime", background=True, unique=True)
+            db[name].create_index("date", background=True)
+        except Exception as e:
+            logging.error("create collection index | %s | %s", name, e)
+        else:
+            logging.warning("create collection index | %s | ok", name)
 
 
 def find():
@@ -342,6 +350,7 @@ def create(log=None, contracts=None, start=None, end=None, filename="./conf.json
         else:
             end = yesterday()
     create_index(globals()["log"], TARGETS, date2mts(start), date2mts(end)-1)
+    create_collection_index()
     logging.warning("create index | %s ~ %s", start, end)
 
 

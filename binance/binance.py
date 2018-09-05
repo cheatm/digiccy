@@ -93,7 +93,7 @@ def get_hist_1min_content(**kwargs):
     if response.status_code == 200:
         return response.content
     else:
-        raise requests.ConnectionError(response.status_code)
+        raise requests.ConnectionError(response.status_code, response.content)
 
 
 # 获取分钟原始数据(json格式)
@@ -156,7 +156,8 @@ def create_index(collection, symbols, start, end):
     assert isinstance(collection, Collection)
     collection.create_index([("symbol", 1), ("start", 1), ("end", 1)])
     index = create_index_frame(symbols, start, end)
-    r = append(collection, index)
+    if len(index.index):
+        r = append(collection, index)
 
 # 创建获取数据索(DataFrame)
 def create_index_frame(symbols, start, end):
@@ -166,6 +167,9 @@ def create_index_frame(symbols, start, end):
     index["vtSymbol"] = index["symbol"].apply(lambda s: "%s:binance" % s)
     index["count"] = 0
     return index.set_index(["symbol", "start", "end"])
+
+
+BAR_COLUMN = ["vtSymbol", "symbol", "exchange", "open", "high", "low", "close", "date", "time", "datetime", "volume", "openInterest"]
 
 
 # 将原始DataFrame修改成符合vnpy格式
@@ -180,7 +184,9 @@ def vnpy_format(frame, symbol, exchange, vtSymbol=None):
     frame["gatewayName"] = ""
     frame["rawData"] = None
     frame["openInterest"] = 0
-    return frame
+    for key in ["open", "high", "low", "close", "volume"]:
+        frame[key] = frame[key].apply(float)
+    return frame[BAR_COLUMN]
 
 
 def main():
@@ -232,7 +238,11 @@ def handle_doc(symbol, start, end, **kwargs):
     sleep(1)
     exchange = "binance"
     vtSymbol = "%s:%s" % (symbol, exchange)
-    frame = get_hist_1min(symbol, "1m",start, end, limit=LIMIT)
+    try:
+        frame = get_hist_1min(symbol, "1m",start, end, limit=LIMIT)
+    except Exception as e:
+        logging.error("handle | %s | %s | %s | %s", symbol, start, end, e)
+        raise e
     count = len(frame.index)
     if count:
         frame = vnpy_format(frame, symbol, exchange, vtSymbol)
@@ -289,10 +299,17 @@ def is_binance(s):
     return "binance" in s
 
 
-def create_collection_index():
-    for name in filter(is_binance, db.collection_names()):
-        db[name].create_index("datetime", background=True)
-        db[name].create_index("date", background=True)
+def create_collection_index(*names):
+    if not names:
+        names = db.collection_names()
+    for name in filter(is_binance, names):
+        try:
+            db[name].create_index("datetime", background=True, unique=True)
+            db[name].create_index("date", background=True)
+        except Exception as e:
+            logging.error("create collection index | %s | %s", name, e)
+        else:
+            logging.warning("create collection index | %s | ok", name)
 
 
 def find():
@@ -343,6 +360,7 @@ def create(log=None, symbols=None, start=None, end=None, filename="./conf.json")
         else:
             end = yesterday()
     create_index(globals()["log"], TARGETS, date2mts(start), date2mts(end)-1)
+    create_collection_index()
     logging.warning("create index | %s ~ %s", start, end)
 
 
@@ -371,5 +389,34 @@ group = click.Group(
 )
 
 
+def clean(collection):
+    assert isinstance(collection, Collection)
+    price = ["open", "high", "low", "close", "volume"]
+    cursor = collection.find({}, list(price))
+    count = cursor.count()
+    _id = None
+    while True:
+        try:
+            doc = next(cursor)
+        except StopIteration:
+            logging.warning("%s | finish", collection)
+            break
+        except Exception as e:
+            logging.error("%s | %s", e)
+            cursor = collection.find({"_id": {"$gt": _id}}, list(price))
+        else:
+            upd = {}
+            for key in price:
+                upd[key] = float(doc[key])
+            collection.update_one({"_id": doc["_id"]}, {"$set": upd})
+            _id = doc["_id"]
+            count -= 1
+            if count % 1000 == 0:
+                logging.warning("%s | left %d", collection.name, count)
+        
+    
+
+
 if __name__ == '__main__':
     group()
+        
