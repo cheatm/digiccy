@@ -1,4 +1,4 @@
-FROM registry.docker-cn.com/python:3.6
+FROM registry.docker-cn.com/library/python:3.6
 
 WORKDIR /app
 COPY requirements.txt ./
