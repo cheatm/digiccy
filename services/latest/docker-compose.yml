@@ -8,5 +8,5 @@ services:
     restart: unless-stopped
     volumes:
       - ./run.sh:/app/run.sh
-      - ./conf.json:/app/conf/json
+      - ./conf.json:/app/conf.json
     command: bash run.sh
