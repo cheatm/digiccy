@@ -1,6 +1,6 @@
 #! /bin/bash
 
-python binance/binance.py update binance/conf-udp.json
+python binance/binance.py update conf.json
 
 while true
 do
@@ -8,7 +8,7 @@ do
     if [ `expr $now % 15` == 0 ]
     then
         echo "start update at `date`"
-        python binance/binance.py update binance/conf-udp.json
+        python binance/binance.py update conf.json
         echo "finish update at `date`"
     fi
 
