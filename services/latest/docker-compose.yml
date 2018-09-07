@@ -4,6 +4,8 @@ services:
     container_name: m1bar_latest
     image: digiccy
     privileged: true
+    network_mode: host
+    restart: unless-stopped
     volumes:
       .:/app
     command: bash run.sh

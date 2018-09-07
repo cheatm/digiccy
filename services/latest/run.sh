@@ -1,5 +1,7 @@
 #! /bin/bash
 
+python binance/binance.py update binance/conf-udp.json
+
 while true
 do
     if [ `expr $now % 15` == 0 ]
