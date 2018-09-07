@@ -1,0 +1,12 @@
+{
+    "MONGODB": "localhost",
+    "LOG": "log.binance",
+    "BAR": "VnTrader_1Min_Db_latest",
+    "START": 20180202,
+    "RETRY": 3,
+    "TARGETS": ["ETHUSDT", "BTCUSDT", "LTCUSDT", "ETCUSDT", "BCCUSDT", "EOSUSDT"],
+    "PROXIES": {
+        "http": "socks5://127.0.0.1:1080",
+        "https": "socks5://127.0.0.1:1080"
+    }
+}

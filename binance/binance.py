@@ -89,6 +89,7 @@ def get_url(**kwargs):
 # 获取分钟线原始数据(stream字符流)
 def get_hist_1min_content(**kwargs):
     url = get_url(**kwargs)
+    logging.debug("request url | %s", url)
     response = requests.get(url, **req_args)
     if response.status_code == 200:
         return response.content
@@ -121,11 +122,18 @@ def gap_range(startTime, endTime):
 
 
 # 获取一分钟数据，整合成DataFrame
-def get_hist_1min(symbol,interval,startTime, endTime, **kwargs):
-    if endTime - startTime <= GAP:
-        docs = get_hist_1min_docs(symbol=symbol, interval=interval,startTime=startTime, endTime=endTime, **kwargs)
+def get_hist_1min(symbol,interval,startTime=None, endTime=None, **kwargs):
+    if startTime and endTime:
+        if endTime - startTime <= GAP:
+            docs = get_hist_1min_docs(symbol=symbol, interval=interval,startTime=startTime, endTime=endTime, **kwargs)
+        else:
+            docs = list(chain(*iter_hist_1min(symbol,interval, startTime, endTime, **kwargs)))
     else:
-        docs = list(chain(*iter_hist_1min(symbol,interval, startTime, endTime, **kwargs)))
+        if startTime:
+            kwargs["startTime"] = startTime
+        if endTime:
+            kwargs["endTime"] = endTime
+        docs = get_hist_1min_docs(symbol=symbol, interval=interval, **kwargs)
     
     return pd.DataFrame(docs, columns=COLUMNS)
 
@@ -180,18 +188,13 @@ def vnpy_format(frame, symbol, exchange, vtSymbol=None):
     frame["date"] = frame["datetime"].apply(dt2date)
     frame["symbol"] = symbol
     frame["exchange"] = exchange
-    frame["vtSymbol"] = vtSymbol if vtSymbol else "%s:%s" % (symbol, exchange)
+    frame["vtSymbol"] = vtSymbol if vtSymbol else vt_symbol(symbol, exchange)
     frame["gatewayName"] = ""
     frame["rawData"] = None
     frame["openInterest"] = 0
     for key in ["open", "high", "low", "close", "volume"]:
         frame[key] = frame[key].apply(float)
     return frame[BAR_COLUMN]
-
-
-def main():
-    # create_temp()
-    insert_from_log(-1)
 
 
 def on_error(e):
@@ -231,13 +234,17 @@ def insert_from_log(retry=3, docs=None):
             insert_from_log(retry, docs)
 
 
+def vt_symbol(symbol, exchange):
+    return "%s:%s" % (symbol, exchange)
+
+
 from time import sleep
 
 
 def handle_doc(symbol, start, end, **kwargs):
     sleep(1)
     exchange = "binance"
-    vtSymbol = "%s:%s" % (symbol, exchange)
+    vtSymbol = vt_symbol(symbol, exchange)
     try:
         frame = get_hist_1min(symbol, "1m",start, end, limit=LIMIT)
     except Exception as e:
@@ -330,6 +337,72 @@ def yesterday():
     return date.year * 10000 + date.month*100 + date.day
 
 
+class StreamBars(object):
+
+    def __init__(self, symbol, limit=LIMIT):
+        self.symbol = symbol
+        self.limit = limit
+
+    def get_last(self):
+        raise NotImplementedError()
+    
+    def handle(self, bars):
+        raise NotImplementedError()
+    
+    def next_bars(self, retry=RETRY, recursion=100):
+        if recursion == 0:
+            logging.warning("request next bars | left retry chance 0 | exit")
+            return 
+        try:
+            last = self.get_last()
+        except Exception as e:
+            return 
+
+        try:
+            bars = get_hist_1min(self.symbol, "1m", last, limit=self.limit)
+            self.handle(bars)
+        except Exception as e:
+            logging.error("request next bars | %s | %s | %s | %s", self.symbol, last, self.limit, e)
+            if retry == 0:
+                logging.error("request next bars | left retry chance 0 | exit")
+            else:
+                self.next_bars(retry-1, recursion-1)
+        else:
+            logging.warning("request next bars | %s | %s | %s | %s", self.symbol, last, self.limit, len(bars))
+            if len(bars) >= self.limit:
+                self.next_bars(retry, recursion-1)
+
+
+from pymongo.collection import Collection
+
+
+class MongodbStreamBars(StreamBars):
+
+    def __init__(self, collection, symbol, limit=LIMIT, default_start=None):
+        assert isinstance(collection, Collection)
+        self.collection = collection
+        super(MongodbStreamBars, self).__init__(symbol, limit)
+        self._default = default_start if default_start else int(datetime.now().timestamp()*1000 - 7*24*60*60*1000) 
+
+    def get_last(self):
+        doc = self.collection.find_one(sort=[("datetime", -1)])
+        if doc:
+            return int(doc["datetime"].timestamp()*1000)
+        else:
+            return self._default
+    
+    def handle(self, bars):
+        if len(bars) == 0:
+            return
+        data = vnpy_format(bars, self.symbol, "binance")
+        for doc in data.to_dict("record"):
+            try:
+                self.collection.update_one({"datetime": doc["datetime"]}, {"$set": doc}, upsert=True)
+            except Exception as e:
+                logging.error("write bar | %s | %s | %s", self.symbol, doc, e)
+
+
+
 import click
 import os
 
@@ -379,13 +452,31 @@ def download(log=None, retry=0, filename=None):
         retry = RETRY
     
     insert_from_log(retry)
-        
+
+
+@click.command()
+@click.argument("filename", nargs=1, default="conf.json")
+def update(filename):
+    init(filename)
+    init_db()
+    tables = db.collection_names()
+    for symbol in TARGETS:
+        name = vt_symbol(symbol, "binance")
+        if name not in tables:
+            col = db.create_collection(name, capped=True, size=2**25)
+            col.create_index("datetime", unique=True, background=True)
+            col.create_index("date", background=True)
+        else:
+            col = db[name]
+        msb = MongodbStreamBars(col, symbol)
+        msb.next_bars()
 
 
 group = click.Group(
     "binance", 
     {"create": create,
-     "download": download}
+     "download": download,
+     "update": update}
 )
 
 
@@ -414,9 +505,6 @@ def clean(collection):
             if count % 1000 == 0:
                 logging.warning("%s | left %d", collection.name, count)
         
-    
-
 
 if __name__ == '__main__':
     group()
-        

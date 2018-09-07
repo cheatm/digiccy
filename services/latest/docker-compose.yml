@@ -1,0 +1,9 @@
+version: "3"
+services:
+  latest:
+    container_name: m1bar_latest
+    image: digiccy
+    privileged: true
+    volumes:
+      .:/app
+    command: bash run.sh
