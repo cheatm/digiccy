@@ -7,5 +7,6 @@ services:
     network_mode: host
     restart: unless-stopped
     volumes:
-      - .:/app
+      - ./run.sh:/app/run.sh
+      - ./conf.json:/app/conf/json
     command: bash run.sh
