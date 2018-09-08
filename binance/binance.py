@@ -170,6 +170,7 @@ def create_index(collection, symbols, start, end):
 # 创建获取数据索(DataFrame)
 def create_index_frame(symbols, start, end):
     keys = list(map(lambda item: (item[0], item[1][0], item[1][1]), product(symbols, gap_range(start, end))))
+    print(keys)
     index = pd.DataFrame(keys, columns=["symbol", "start", "end"])
     index["date"] = index["start"].apply(mts2date)
     index["vtSymbol"] = index["symbol"].apply(lambda s: "%s:binance" % s)
@@ -332,8 +333,8 @@ def latest_record(collection):
     return None
 
 
-def yesterday():
-    date = datetime.now() - timedelta(days=1)
+def today():
+    date = datetime.now()
     return date.year * 10000 + date.month*100 + date.day
 
 
@@ -431,7 +432,7 @@ def create(log=None, symbols=None, start=None, end=None, filename="./conf.json")
         if END:
             end = END
         else:
-            end = yesterday()
+            end = today()
     create_index(globals()["log"], TARGETS, date2mts(start), date2mts(end)-1)
     create_collection_index()
     logging.warning("create index | %s ~ %s", start, end)

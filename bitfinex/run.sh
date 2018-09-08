@@ -16,7 +16,7 @@ then
 fi
 
 
-point=(03:00 09:00)
+point=(01:00 04:00)
 
 while true
 do
@@ -28,7 +28,7 @@ do
             echo "------------------------- Download start at `date` -------------------------"
             python bitfinex.py create -f conf.json
             python bitfinex.py download -f conf.json
-            echo "------------------------- Download start at `date` -------------------------"
+            echo "------------------------- Download finish at `date` -------------------------"
         fi
     done
 

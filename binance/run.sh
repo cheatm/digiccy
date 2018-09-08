@@ -11,10 +11,10 @@ then
     echo "------------------------- Download start at `date` -------------------------"
     python binance.py create -f conf.json
     python binance.py download -f conf.json
-    echo "------------------------- Download start at `date` -------------------------"
+    echo "------------------------- Download finish at `date` -------------------------"
 fi
 
-point=(00:00 06:00)
+point=(00:10 03:10)
 
 while true
 do
@@ -26,7 +26,7 @@ do
             echo "------------------------- Download start at `date` -------------------------"
             python binance.py create -f conf.json
             python binance.py download -f conf.json
-            echo "------------------------- Download start at `date` -------------------------"
+            echo "------------------------- Download finish at `date` -------------------------"
         fi
     done
 
